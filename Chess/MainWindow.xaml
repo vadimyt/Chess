@@ -1,0 +1,275 @@
+﻿<Window x:Class="Chess.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Chess"
+        mc:Ignorable="d"
+        Title="MainWindow" MinHeight="450" MinWidth="800" Height="450" Width="800">
+    <Grid>
+        <Grid x:Name="StartButtons" d:IsHidden="True">
+            <Button 
+                Margin="220,0,440,0"
+                Width="120"
+                Height="60"
+                Click="Login_Click" 
+                HorizontalAlignment="Center" 
+                VerticalAlignment="Center">
+                <TextBlock Text="Login"
+                           FontSize="30"
+                           />
+            </Button>
+            <Button 
+                Margin="440,0,220,0"
+                Width="120"
+                Height="60"
+                Click="Register_Click" 
+                HorizontalAlignment="Center" 
+                VerticalAlignment="Center">
+                <TextBlock Text="Register"
+                   FontSize="30"
+                   />
+            </Button>
+        </Grid>
+        <Grid x:Name="LoginPassword" d:IsHidden="True">
+            <TextBlock
+                Text="Login"
+                FontSize="30"
+                Width="100"
+                Height="60"
+                HorizontalAlignment="Center" 
+                VerticalAlignment="Center" 
+                Margin="0,0,100,250"
+                />
+            <TextBox 
+                x:Name="Login"
+                FontSize="30"
+                Width="100"
+                Height="60"
+                HorizontalAlignment="Center" 
+                VerticalAlignment="Center" 
+                Margin="100,0,0,250" />
+            <TextBlock
+                Text="Password"
+                FontSize="30"
+                Width="140"
+                Height="60"
+                HorizontalAlignment="Center" 
+                VerticalAlignment="Center" 
+                Margin="0,0,140,100"
+                />
+            <PasswordBox 
+                x:Name="PasswordHidden"                
+                FontSize="30"
+                Width="100"
+                Height="60"
+                HorizontalAlignment="Center" 
+                VerticalAlignment="Center" 
+                PasswordChar="•"
+                Margin="100,0,0,100"/>
+            <TextBox x:Name="PasswordUnmask"
+                     Visibility="Hidden"
+                     FontSize="30"
+                     Width="100"
+                     Height="60"
+                     HorizontalAlignment="Center" 
+                     VerticalAlignment="Center" 
+                     Margin="100,0,0,100"/>
+            <Image x:Name="ShowPassword"
+                   Width="20"
+                   Height="20"
+                   Source="show_hide/hide.png"
+                   RenderOptions.BitmapScalingMode="NearestNeighbor"
+                   RenderOptions.EdgeMode="Aliased"
+                   MouseDown="ShowPassword_PreviewMouseDown"
+                   MouseUp="ShowPassword_PreviewMouseUp"
+                   MouseLeave="ShowPassword_MouseLeave" 
+                   Margin="300,0,0,100"/>
+            <Button 
+                Margin="100,100,0,0"
+                Width="120"
+                Height="60"
+                x:Name="LoginSend"
+                Click="LoginSend_Click" 
+                HorizontalAlignment="Center" 
+                VerticalAlignment="Center">
+                <TextBlock Text="Login"
+                    FontSize="30"
+                    />
+            </Button>
+            <Button 
+                Margin="100,100,0,0"
+                Width="120"
+                Height="60"
+                x:Name="RegisterSend"
+                Click="RegisterSend_Click"
+                HorizontalAlignment="Center" 
+                VerticalAlignment="Center">
+                <TextBlock Text="Register"
+                   FontSize="30"
+                   />
+            </Button>
+            <Button 
+                Margin="0,100,160,0"
+                Width="120"
+                Height="60"
+                x:Name="Back"
+                Click="Back_Click"
+                HorizontalAlignment="Center" 
+                VerticalAlignment="Center">
+                <TextBlock Text="Back"
+                   FontSize="30"
+                   />
+            </Button>
+        </Grid>
+        <Grid x:Name="Lobby" d:IsHidden="True">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="150"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel
+                x:Name="Lobbies"
+                Grid.Column="1">
+            </StackPanel>
+            <Button 
+                Grid.Column="2"
+                Margin="10,10,0,0"
+                Width="120"
+                Height="60"
+                x:Name="RefreshSend"
+                Click="RefreshSend_Click"
+                HorizontalAlignment="Left" 
+                VerticalAlignment="Top">
+                <TextBlock Text="Refresh"
+                   FontSize="30"
+                   />
+            </Button>
+            <Button 
+                Grid.Column="2"
+                Margin="10,350,0,0"
+                Width="120"
+                Height="60"
+                x:Name="DeleteSend"
+                Click="DeleteSend_Click"
+                HorizontalAlignment="Left" 
+                VerticalAlignment="Top">
+                <TextBlock Text="Delete"
+                   FontSize="30"
+                   />
+            </Button>
+            <Button 
+                Grid.Column="0"
+                Margin="10,10,0,0"
+                Width="120"
+                Height="60"
+                x:Name="CreateSend"
+                Click="CreateSend_Click"
+                HorizontalAlignment="Left" 
+                VerticalAlignment="Top">
+                <TextBlock Text="Create"
+                   FontSize="30"
+                   />
+            </Button>
+            <Button 
+                Grid.Column="0"
+                Margin="10,350,0,0"
+                Width="120"
+                Height="60"
+                x:Name="QuitSend"
+                Click="QuitSend_Click"
+                HorizontalAlignment="Left" 
+                VerticalAlignment="Top">
+                <TextBlock Text="Quit"
+                   FontSize="30"
+                   />
+            </Button>
+        </Grid>
+        <Grid x:Name="Game">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="100"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="50"/>
+                <RowDefinition/>
+                <RowDefinition Height="50"/>
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="1"
+                       Grid.Column="1"
+                       x:Name="Wait"
+                       Width="200"
+                       Height="80"
+                       FontSize="20"/>
+            <Grid x:Name="Enemy_info"
+                  Grid.Row="0"
+                  Grid.Column="1">
+                <TextBlock x:Name="Enemy_login"
+                           Width="200"
+                           Height="50"
+                           FontSize="20"
+                           Margin="0,10,0,0"/>
+                <TextBlock Text="Ваш оппонент:"
+                           Width="150"
+                           Height="50"
+                           FontSize="20"
+                           Margin="0,10,400,0"/>
+                <TextBlock x:Name="Enemy_wins"
+                           Width="60"
+                           Height="50"
+                           FontSize="20"
+                           Margin="480,10,0,0"/>
+                <TextBlock Text="победы:"
+                           Width="150"
+                           Height="50"
+                           FontSize="20"
+                           Margin="400,10,0,0"/>
+            </Grid>
+            <Button Grid.Row="1"
+                    Grid.Column="0"
+                    Height="50"
+                    Width="90"
+                    Click="LeaveSend_Click">
+                <TextBlock Text="Leave"
+                           FontSize="20"/>
+            </Button>
+            <Button Grid.Row="1"
+                    Grid.Column="2"
+                    Height="50"
+                    Width="90"
+                    x:Name="Restart"
+                    Click="RestartSend_Click">
+                <TextBlock Text="Restart"
+                           FontSize="20"/>
+            </Button>
+
+            <Grid Grid.Row="1"
+                  Grid.Column="1"
+                  x:Name="Chess_Grid">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+            </Grid>
+        </Grid>
+
+    </Grid>
+</Window>
