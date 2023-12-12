@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -33,6 +34,7 @@ namespace Chess
         string default_board = "rnbqkbnr/pppppppp/00000000/00000000/00000000/00000000/PPPPPPPP/RNBQKBNR";
         bool turn;
         bool start_game=false;
+        string local_board;
         static CancellationTokenSource tokenSource = new CancellationTokenSource();
         CancellationToken ct = tokenSource.Token;
         private enum Mode
@@ -129,22 +131,35 @@ namespace Chess
                         if (char.IsLower(btn.Content.ToString().ToCharArray()[0]))
                             btn.Content = new Image
                             {
-                                Source = new BitmapImage(new Uri($"Chess_pieces/{btn.Content.ToString().ToCharArray()[0]}w.png", UriKind.Relative))
+                                Source = new BitmapImage(new Uri($"Chess_pieces/{btn.Content.ToString().ToCharArray()[0]}w.png", UriKind.Relative)),
+                                Name = btn.Content.ToString().ToCharArray()[0]+"w"
                             };
                         else
                             btn.Content = new Image
                             {
-                                Source = new BitmapImage(new Uri($"Chess_pieces/{btn.Content.ToString().ToCharArray()[0]}b.png", UriKind.Relative))
+                                Source = new BitmapImage(new Uri($"Chess_pieces/{btn.Content.ToString().ToCharArray()[0]}b.png", UriKind.Relative)),
+                                Name = btn.Content.ToString().ToCharArray()[0]+"b"
                             };
+                        if (turn)
+                        {
+                            if (player_pos == 0)
+                            {
+                                if ((btn.Content as Image).Name[1] == 'w')
+                                    btn.Click += ChessGrid_Click;
+                            }
+                            else
+                            {
+                                if ((btn.Content as Image).Name[1] == 'b')
+                                    btn.Click += ChessGrid_Click;
+                            }
+                        }
                     }
                     else
                     {
                         btn.Content = "";
                     }
                     Grid.SetColumn(btn, i);
-                    Grid.SetRow(btn, j);    
-                    if (turn)
-                    btn.Click += ChessGrid_Click;
+                    Grid.SetRow(btn, j);                    
                     parent.Children.Add(btn);
                 }
             }
@@ -270,26 +285,755 @@ namespace Chess
         private void ChessGrid_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
+            button.Background = Brushes.Gold;
             move+=button.Uid;
-            if (move.Length==4)
+            if (move.Length == 4)
             {
-                network.snd("/move " + move);
-                move = "";
-                string res = network.rcv();
-                if (!res.Contains("win"))
+                if (move[0] == move[2] && move[1] == move[3])
                 {
-                    turn = false;
-                    CreateBoard(res);
-                    Task.Run((Action)CheckTask, ct);
+                    try
+                    { 
+                        CreateBoard(local_board);
+                    }
+                    catch
+                    {
+                        CreateBoard(default_board);
+                    }
+                    move = "";
                 }
                 else
                 {
-                    Restart.Visibility = Visibility.Visible;
-                    Wait.Text = "Вы победили";
-                    Grid parent = Chess_Grid;
-                    parent.Children.Clear();
+                    network.snd("/move " + move);
+                    move = "";
+                    string res = network.rcv();
+                    if (!res.Contains("win"))
+                    {
+                        turn = false;
+                        local_board = res;
+                        CreateBoard(res);
+                        Task.Run((Action)CheckTask, ct);
+                    }
+                    else
+                    {
+                        Restart.Visibility = Visibility.Visible;
+                        Wait.Text = "Вы победили";
+                        Grid parent = Chess_Grid;
+                        parent.Children.Clear();
+                    }
                 }
             }
+            else
+            {
+                ShowPossibleMove(button);
+            }
+        }
+
+        private void ShowPossibleMove(Button cords)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                for (int j = 0; j < 8; j++)
+                {
+                    if (IntChar(i) + (j + 1).ToString() != cords.Uid)
+                    {
+                        string uid = IntChar(i) + (j+1).ToString();
+                        var el = GetByUid(Chess_Grid, uid) as Button;
+                        el.Click -= ChessGrid_Click;
+                    }
+                    else
+                    {
+
+                    }
+                }
+            }
+            var content = cords.Content as Image;
+            switch (content.Name[0])
+            {
+                case 'r':
+                case 'R':
+                    {
+                        int a = 1;
+                        int b = 0;
+                        int c = 0;
+                        bool end = false;
+                        while (!end)
+                        {
+                            while (true)
+                            {
+                                string uid = (char)(cords.Uid[0] + 1 * a) + ((int)Char.GetNumericValue(cords.Uid[1]) + 1 * b).ToString();
+                                var el = GetByUid(Chess_Grid, uid) as Button;
+                                if (el != null)
+                                {
+                                    if (el.Content as string != "")
+                                    {
+                                        if (content.Name[1] == 'w')
+                                        {
+                                            if ((el.Content as Image).Name[1] == 'b')
+                                            {
+                                                el.Click += ChessGrid_Click;
+                                                el.Background = Brushes.Red;
+                                                c++;
+                                                break;
+                                            }
+                                            else
+                                            {
+                                                c++;
+                                                break;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            if ((el.Content as Image).Name[1] == 'w')
+                                            {
+                                                el.Click += ChessGrid_Click;
+                                                el.Background = Brushes.Red;
+                                                c++;
+                                                break;
+                                            }
+                                            else
+                                            {
+                                                c++;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        el.Click += ChessGrid_Click;
+                                        el.Background = Brushes.Green;
+                                    }
+                                    if (a > 0)
+                                        a++;
+                                    else
+                                        if (a == 0)
+                                        a = 0;
+                                    else
+                                        a--;
+                                    if (b > 0)
+                                        b++;
+                                    else
+                                        if (b == 0)
+                                        b = 0;
+                                    else
+                                        b--;
+                                }
+                                else
+                                {
+                                    c++;
+                                    break;
+                                }
+                            }
+                            switch (c)
+                            {
+                                case 1:
+                                    a = -1;
+                                    b = 0;
+                                    break;
+                                case 2:
+                                    a = 0;
+                                    b = 1;
+                                    break;
+                                case 3:
+                                    a = 0;
+                                    b = -1;
+                                    break;
+                                case 4:
+                                    end = true;
+                                    break;
+                            }
+                        }
+                        break;
+                    }
+                case 'n':
+                case 'N':
+                    {
+                        int a = 0;
+                        int b = 0;
+                        for (int i = 0; i < 8; i++)
+                        {
+                            
+                            switch (i)
+                            {
+                                case 0:
+                                    a = 1;
+                                    b = 2;
+                                    break;
+                                case 1:
+                                    a = -1;
+                                    b = 2;
+                                    break;
+                                case 2:
+                                    a = 2;
+                                    b = 1;
+                                    break;
+                                case 3:
+                                    a = 2;
+                                    b = -1;
+                                    break;
+                                case 4:
+                                    a = -2;
+                                    b = 1;
+                                    break;
+                                case 5:
+                                    a = -2;
+                                    b = -1;
+                                    break;
+                                case 6:
+                                    a = 1;
+                                    b = -2;
+                                    break;
+                                case 7:
+                                    a = -1;
+                                    b = -2;
+                                    break;
+                            }
+                            string uid = (char)(cords.Uid[0] + 1 * a) + ((int)Char.GetNumericValue(cords.Uid[1]) + 1 * b).ToString();
+                            var el = GetByUid(Chess_Grid, uid) as Button;
+                            if (el != null)
+                            {
+                                if (el.Content as string != "")
+                                {
+                                    if (content.Name[1] == 'w')
+                                    {
+                                        if ((el.Content as Image).Name[1] == 'b')
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Red;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if ((el.Content as Image).Name[1] == 'w')
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Red;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    el.Click += ChessGrid_Click;
+                                    el.Background = Brushes.Green;
+                                }
+                            }
+                        }
+                        break;
+                    }
+                case 'b':
+                case 'B':
+                    {
+                        int a = 1;
+                        int b = 1;
+                        int c = 0;
+                        bool end = false;
+                        while (!end)
+                        {
+                            while(true)
+                            {
+                                string uid = (char)(cords.Uid[0] + 1*a) + ((int)Char.GetNumericValue(cords.Uid[1]) + 1*b).ToString();
+                                var el = GetByUid(Chess_Grid, uid) as Button;
+                                if (el != null)
+                                {
+                                    if (el.Content as string != "")
+                                    {
+                                        if (content.Name[1] == 'w')
+                                        {
+                                            if ((el.Content as Image).Name[1] == 'b')
+                                            {
+                                                el.Click += ChessGrid_Click;
+                                                el.Background = Brushes.Red;
+                                                c++;
+                                                break;
+                                            }
+                                            else
+                                            {
+                                                c++;
+                                                break;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            if ((el.Content as Image).Name[1] == 'w')
+                                            {
+                                                el.Click += ChessGrid_Click;
+                                                el.Background = Brushes.Red;
+                                                c++;
+                                                break;
+                                            }
+                                            else
+                                            {
+                                                c++;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        el.Click += ChessGrid_Click;
+                                        el.Background = Brushes.Green;
+                                    }
+                                    if (a>0)
+                                    a++;
+                                    else
+                                    a--;
+                                    if (b>0)
+                                    b++;
+                                    else
+                                    b--;
+                                }
+                                else
+                                {
+                                    c++;
+                                    break;
+                                }
+                            }
+                            switch (c)
+                            {
+                                case 1:
+                                    a = -1;
+                                    b = 1;
+                                    break;
+                                case 2:
+                                    a = -1;
+                                    b = -1;
+                                    break;
+                                case 3:
+                                    a = 1;
+                                    b = -1;
+                                    break;
+                                case 4:
+                                    end=true;
+                                    break;
+                            }
+                        }
+                        break;
+                    }
+                case 'q':
+                case 'Q':
+                    {
+                        int a = 1;
+                        int b = 0;
+                        int c = 0;
+                        bool end = false;
+                        while (!end)
+                        {
+                            while (true)
+                            {
+                                string uid = (char)(cords.Uid[0] + 1 * a) + ((int)Char.GetNumericValue(cords.Uid[1]) + 1 * b).ToString();
+                                var el = GetByUid(Chess_Grid, uid) as Button;
+                                if (el != null)
+                                {
+                                    if (el.Content as string != "")
+                                    {
+                                        if (content.Name[1] == 'w')
+                                        {
+                                            if ((el.Content as Image).Name[1] == 'b')
+                                            {
+                                                el.Click += ChessGrid_Click;
+                                                el.Background = Brushes.Red;
+                                                c++;
+                                                break;
+                                            }
+                                            else
+                                            {
+                                                c++;
+                                                break;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            if ((el.Content as Image).Name[1] == 'w')
+                                            {
+                                                el.Click += ChessGrid_Click;
+                                                el.Background = Brushes.Red;
+                                                c++;
+                                                break;
+                                            }
+                                            else
+                                            {
+                                                c++;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        el.Click += ChessGrid_Click;
+                                        el.Background = Brushes.Green;
+                                    }
+                                    if (a > 0)
+                                        a++;
+                                    else
+                                        if (a == 0 && c<4)
+                                        a = 0;
+                                    else
+                                        a--;
+                                    if (b > 0)
+                                        b++;
+                                    else
+                                        if (b == 0 && c < 4)
+                                        b = 0;
+                                    else
+                                        b--;
+                                }
+                                else
+                                {
+                                    c++;
+                                    break;
+                                }
+                            }
+                            switch (c)
+                            {
+                                case 1:
+                                    a = -1;
+                                    b = 0;
+                                    break;
+                                case 2:
+                                    a = 0;
+                                    b = 1;
+                                    break;
+                                case 3:
+                                    a = 0;
+                                    b = -1;
+                                    break;
+                                case 4:
+                                    a = -1;
+                                    b = 1;
+                                    break;
+                                case 5:
+                                    a = -1;
+                                    b = -1;
+                                    break;
+                                case 6:
+                                    a = 1;
+                                    b = -1;
+                                    break;
+                                case 7:
+                                    a = 1;
+                                    b = 1;
+                                    break;
+                                case 8:
+                                    end = true;
+                                    break;
+                            }
+                        }
+                        break;
+                    }
+                case 'k':
+                case 'K':
+                    {
+                        string uid = (char)(cords.Uid[0] - 1) + cords.Uid[1].ToString();
+                        var el = GetByUid(Chess_Grid, uid) as Button;
+                        if (el != null)
+                        {
+                            if (el.Content as string != "")
+                            {
+                                if (content.Name[1] == 'w')
+                                {
+                                    if ((el.Content as Image).Name[1] == 'b')
+                                    {
+                                        el.Click += ChessGrid_Click;
+                                        el.Background = Brushes.Red;
+                                    }
+                                }
+                                else
+                                {
+                                    if ((el.Content as Image).Name[1] == 'w')
+                                    {
+                                        el.Click += ChessGrid_Click;
+                                        el.Background = Brushes.Red;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                el.Click += ChessGrid_Click;
+                                el.Background = Brushes.Green;
+                            }
+                        }
+                        uid = (char)(cords.Uid[0] + 1) + cords.Uid[1].ToString();
+                        el = GetByUid(Chess_Grid, uid) as Button;
+                        if (el != null)
+                        {
+                            if (el.Content as string != "")
+                            {
+                                if (content.Name[1] == 'w')
+                                {
+                                    if ((el.Content as Image).Name[1] == 'b')
+                                    {
+                                        el.Click += ChessGrid_Click;
+                                        el.Background = Brushes.Red;
+                                    }
+                                }
+                                else
+                                {
+                                    if ((el.Content as Image).Name[1] == 'w')
+                                    {
+                                        el.Click += ChessGrid_Click;
+                                        el.Background = Brushes.Red;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                el.Click += ChessGrid_Click;
+                                el.Background = Brushes.Green;
+                            }
+                        }
+                        for (int i = 0; i < 3; i++)
+                        {
+                            uid = (char)(cords.Uid[0] - 1 + i) + ((int)Char.GetNumericValue(cords.Uid[1]) + 1).ToString();
+                            el = GetByUid(Chess_Grid, uid) as Button;
+                            if (el != null)
+                            {
+                                if (el.Content as string != "")
+                                {
+                                    if (content.Name[1] == 'w')
+                                    {
+                                        if ((el.Content as Image).Name[1] == 'b')
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Red;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if ((el.Content as Image).Name[1] == 'w')
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Red;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    el.Click += ChessGrid_Click;
+                                    el.Background = Brushes.Green;
+                                }
+                            }
+                        }
+                        for (int i = 0; i < 3; i++)
+                        {
+                            uid = (char)(cords.Uid[0] - 1 + i) + ((int)Char.GetNumericValue(cords.Uid[1]) - 1).ToString();
+                            el = GetByUid(Chess_Grid, uid) as Button;
+                            if (el != null)
+                            {
+                                if (el.Content as string != "")
+                                {
+                                    if (content.Name[1] == 'w')
+                                    {
+                                        if ((el.Content as Image).Name[1] == 'b')
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Red;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if ((el.Content as Image).Name[1] == 'w')
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Red;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    el.Click += ChessGrid_Click;
+                                    el.Background = Brushes.Green;
+                                }
+                            }
+                        }                            
+                    break;
+                    }
+                case 'p':
+                case 'P':
+                    {
+                        //white
+                        if (content.Name[1] == 'w')
+                        {
+                            if (cords.Uid[1] == '2')
+                            {
+                                string uid = (char)(cords.Uid[0] + 1) + ((int)Char.GetNumericValue(cords.Uid[1]) + 1).ToString();
+                                var el = GetByUid(Chess_Grid, uid) as Button;
+                                if (el != null)
+                                {
+                                    if (el.Content as string != "")
+                                    {
+                                        if ((el.Content as Image).Name[1] == 'b')
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Red;
+                                        }
+                                    }
+                                }
+                                uid = (char)(cords.Uid[0] - 1) + ((int)Char.GetNumericValue(cords.Uid[1]) + 1).ToString();
+                                el = GetByUid(Chess_Grid, uid) as Button;
+                                if (el != null)
+                                {
+                                    if (el.Content as string != "")
+                                    {
+                                        if ((el.Content as Image).Name[1] == 'b')
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Red;
+                                        }
+                                    }
+                                }
+                                for (int i = 1; i < 3; i++)
+                                {
+                                    uid = cords.Uid[0] + ((int)Char.GetNumericValue(cords.Uid[1]) + i).ToString();
+                                    el = GetByUid(Chess_Grid, uid) as Button;
+                                    if (el != null)
+                                    {
+                                        if (el.Content as string == "")
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Green;
+                                        }
+                                    }
+                                }                                
+                            }
+                            else
+                            {                                
+                                string uid = (char)(cords.Uid[0] + 1) + ((int)Char.GetNumericValue(cords.Uid[1]) + 1).ToString();
+                                var el = GetByUid(Chess_Grid, uid) as Button;
+                                if (el != null)
+                                {
+                                    if (el.Content as string != "")
+                                    {
+                                        if ((el.Content as Image).Name[1] == 'b')
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Red;
+                                        }
+                                    }
+                                }
+                                uid = (char)(cords.Uid[0] - 1) + ((int)Char.GetNumericValue(cords.Uid[1]) + 1).ToString();
+                                el = GetByUid(Chess_Grid, uid) as Button;
+                                if (el != null)
+                                {
+                                    if (el.Content as string != "")
+                                    {
+                                        if ((el.Content as Image).Name[1] == 'b')
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Red;
+                                        }
+                                    }
+                                }
+                                uid = cords.Uid[0] + ((int)Char.GetNumericValue(cords.Uid[1]) + 1).ToString();
+                                el = GetByUid(Chess_Grid, uid) as Button;
+                                if (el != null)
+                                {
+                                    if (el.Content as string == "")
+                                    {
+                                        el.Click += ChessGrid_Click;
+                                        el.Background = Brushes.Green;
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (cords.Uid[1] == '7')
+                            {
+                                string uid = (char)(cords.Uid[0] + 1) + ((int)Char.GetNumericValue(cords.Uid[1]) - 1).ToString();
+                                var el = GetByUid(Chess_Grid, uid) as Button;
+                                if (el != null)
+                                {
+                                    if (el.Content as string != "")
+                                    {
+                                        if ((el.Content as Image).Name[1] == 'w')
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Red;
+                                        }
+                                    }
+                                }
+                                uid = (char)(cords.Uid[0] - 1) + ((int)Char.GetNumericValue(cords.Uid[1]) - 1).ToString();
+                                el = GetByUid(Chess_Grid, uid) as Button;
+                                if (el != null)
+                                {
+                                    if (el.Content as string != "")
+                                    {
+                                        if ((el.Content as Image).Name[1] == 'w')
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Red;
+                                        }
+                                    }
+                                }
+                                for (int i = 1; i < 3; i++)
+                                {
+                                    uid = cords.Uid[0] + ((int)Char.GetNumericValue(cords.Uid[1]) - i).ToString();
+                                    el = GetByUid(Chess_Grid, uid) as Button;
+                                    if (el != null)
+                                    {
+                                        if (el.Content as string == "")
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Green;
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                string uid = (char)(cords.Uid[0] + 1) + ((int)Char.GetNumericValue(cords.Uid[1]) - 1).ToString();
+                                var el = GetByUid(Chess_Grid, uid) as Button;
+                                if (el != null)
+                                {
+                                    if (el.Content as string != "")
+                                    {
+                                        if ((el.Content as Image).Name[1] == 'w')
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Red;
+                                        }
+                                    }
+                                }
+                                uid = (char)(cords.Uid[0] - 1) + ((int)Char.GetNumericValue(cords.Uid[1]) - 1).ToString();
+                                el = GetByUid(Chess_Grid, uid) as Button;
+                                if (el != null)
+                                {
+                                    if (el.Content as string != "")
+                                    {
+                                        if ((el.Content as Image).Name[1] == 'w')
+                                        {
+                                            el.Click += ChessGrid_Click;
+                                            el.Background = Brushes.Red;
+                                        }
+                                    }
+                                }
+                                uid = cords.Uid[0] + ((int)Char.GetNumericValue(cords.Uid[1]) - 1).ToString();
+                                el = GetByUid(Chess_Grid, uid) as Button;
+                                if (el != null)
+                                {
+                                    if (el.Content as string == "")
+                                    {
+                                        el.Click += ChessGrid_Click;
+                                        el.Background = Brushes.Green;
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                    }
+            }
+        }
+
+        public static UIElement GetByUid(DependencyObject rootElement, string uid)
+        {
+            foreach (UIElement element in LogicalTreeHelper.GetChildren(rootElement).OfType<UIElement>())
+            {
+                if (element.Uid == uid)
+                    return element;
+                UIElement resultChildren = GetByUid(element, uid);
+                if (resultChildren != null)
+                    return resultChildren;
+            }
+            return null;
         }
 
         private void CheckTask()
@@ -363,6 +1107,7 @@ namespace Chess
                                     else
                                     {                                    
                                         turn = true;
+                                        local_board = res;
                                         Dispatcher.Invoke(() => CreateBoard(res));
                                         break;
                                     }
