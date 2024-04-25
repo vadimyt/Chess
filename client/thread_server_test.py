@@ -55,28 +55,43 @@ def f(login, password, player_id, port):
         time.sleep(time_delay)
     n = Network(port)
     p = str(n.getP().decode("utf-8"))
-    n.send("/register".encode("utf-8"))
-    n.send(login.encode("utf-8"))
-    n.send(password.encode("utf-8"))
-    n.send("/login".encode("utf-8"))
-    print(login)
-    n.send(login.encode("utf-8"))
-    res=(n.send(password.encode("utf-8"))).decode("utf-8")
-    print(res)
-    gameloop=True
-    counter_timeout = 1000
-    counter = 0
-    while(gameloop):
-        res=n.send("/lobby".encode("utf-8")).decode("utf-8")
-        if res.find("Нет лобби") >= 0:
+    if (p.find("error")<0):
+        round_counter = 0
+        n.send("/register".encode("utf-8"))
+        n.send(login.encode("utf-8"))
+        n.send(password.encode("utf-8"))
+        n.send("/login".encode("utf-8"))
+        print(login)
+        n.send(login.encode("utf-8"))
+        time.sleep(time_delay)
+        res=(n.send(password.encode("utf-8"))).decode("utf-8")
+        time.sleep(time_delay)
+        print(res)
+        gameloop=True
+        counter_timeout = 10
+        counter = 0
+        while(gameloop):
             print("create : 71")
             n.send("/create".encode("utf-8"))
+            time.sleep(time_delay)
             connected=True
             while(connected):
+                while(True):
+                    try:
+                        res=n.send("/check".encode("utf-8")).decode("utf-8")
+                    except:
+                        pass
+                    time.sleep(time_delay)
+                    counter+=1
+                    if (counter_timeout<counter): 
+                        break
                 time.sleep(3)
-                res=n.send("/leave".encode("utf-8")).decode("utf-8")
-                print("leave : 113"+res+"leaved: "+login)
-                res=n.send("/quit".encode("utf-8")).decode("utf-8")
+                try:
+                    res=n.send("/leave".encode("utf-8")).decode("utf-8")
+                    print("leave : 113"+res+"leaved: "+login)
+                    res=n.send("/quit".encode("utf-8")).decode("utf-8")
+                except:
+                    pass
                 connected=False
                 gameloop=False
                 break
@@ -86,22 +101,42 @@ def randStr(chars = string.ascii_uppercase + string.digits, N=10):
         return ''.join(random.choice(chars) for _ in range(N)) 
 
 if __name__ == '__main__':
-    server_port = 45246
-    thread_server_port = 45248
-    processes_count = 4
+    server_port = 45245
+    thread_server_port = 45241
+    processes_count = 10
     first_complete = False
     second_complete = False
-    account_pool = [["hi","5",1, server_port],
-                    ["tst","1",2, server_port],
-                    ["hel","0",1, server_port],
-                    ["asd","pass",2, server_port]]
-    for j in range(0):
-        time.sleep(0.3)
+    account_pool = []
+    for j in range(processes_count-len(account_pool)):
+        #time.sleep(0.1)
         account_pool.append([randStr(N=7),randStr(N=7),j%2+1, server_port])
     for acc in account_pool:
         print(acc)
-    server_res_array=[]
-    with Pool(processes=4) as pool:
-        multiple_results = [pool.apply_async(f, (account_pool[i])) for i in range(4)]
-        print([res.get() for res in multiple_results])
-    print("aboba")
+    for j in range(len(account_pool)):
+        account_pool[j][3]=thread_server_port
+    for acc in account_pool:
+        print(acc)
+    time.sleep(time_delay)
+    try:
+        with Pool(processes=processes_count) as pool:
+            multiple_results = [pool.apply_async(f, (account_pool[i])) for i in range(len(account_pool))]
+            #res = pool.apply_async(time.sleep, (time_delay,))
+            threaded_server_res_array=([res.get() for res in multiple_results])
+        print(threaded_server_res_array)        
+        second_complete = True
+    except:
+        print("Second not complete")
+    threaded_server_res_array_min = threaded_server_res_array[0][0]
+    threaded_server_res_array_max = threaded_server_res_array[0][0]
+    threaded_server_res_array_mid = 0
+    for k in range(len(threaded_server_res_array)):
+        for m in range(len(threaded_server_res_array[k])):
+            threaded_server_res_array_mid+=threaded_server_res_array[k][m]
+            if (threaded_server_res_array[k][m]>threaded_server_res_array_max):
+                threaded_server_res_array_max=threaded_server_res_array[k][m]
+            if (threaded_server_res_array[k][m]<threaded_server_res_array_min):
+                threaded_server_res_array_min=threaded_server_res_array[k][m]
+    if(second_complete):
+        print("threaded_server_res_array_min: " + str(threaded_server_res_array_min))
+        print("threaded_server_res_array_max: " + str(threaded_server_res_array_max))
+        print("threaded_server_res_array_mid: " + str(threaded_server_res_array_mid/len(threaded_server_res_array)))
